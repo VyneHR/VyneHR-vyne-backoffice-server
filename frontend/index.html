@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VYNE HR - Database Visualizer</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <header class="header">
+            <h1>🗄️ VYNE HR Database Visualizer</h1>
+            <div class="header-actions">
+                <button class="btn btn-secondary" onclick="refreshStats()">🔄 Actualizar</button>
+                <div class="connection-status" id="connectionStatus">
+                    <span class="status-dot"></span>
+                    <span>Conectando...</span>
+                </div>
+            </div>
+        </header>
+
+        <!-- Stats Dashboard -->
+        <section class="stats-section" id="statsSection">
+            <h2>📊 Estadísticas de la Base de Datos</h2>
+            <div class="stats-grid" id="statsGrid">
+                <!-- Se llena dinámicamente -->
+            </div>
+        </section>
+
+        <!-- Collections List -->
+        <section class="collections-section">
+            <div class="section-header">
+                <h2>📁 Colecciones</h2>
+                <div class="search-box">
+                    <input type="text" id="globalSearch" placeholder="🔍 Buscar en todas las colecciones..." 
+                           onkeypress="handleGlobalSearch(event)">
+                    <button class="btn btn-primary" onclick="performGlobalSearch()">Buscar</button>
+                </div>
+            </div>
+            <div class="collections-grid" id="collectionsGrid">
+                <!-- Se llena dinámicamente -->
+            </div>
+        </section>
+
+        <!-- Collection Viewer Modal -->
+        <div class="modal" id="collectionModal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2 id="modalTitle">Colección</h2>
+                    <button class="close-btn" onclick="closeModal()">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <div class="collection-toolbar">
+                        <div class="toolbar-left">
+                            <input type="text" id="searchInput" placeholder="🔍 Buscar..." 
+                                   onkeypress="handleSearch(event)">
+                            <select id="limitSelect" onchange="loadCollection()">
+                                <option value="10">10 por página</option>
+                                <option value="25">25 por página</option>
+                                <option value="50" selected>50 por página</option>
+                                <option value="100">100 por página</option>
+                            </select>
+                            <select id="sortSelect" onchange="loadCollection()">
+                                <option value="_id:desc">Más recientes</option>
+                                <option value="_id:asc">Más antiguos</option>
+                                <option value="createdAt:desc">Por fecha (desc)</option>
+                                <option value="createdAt:asc">Por fecha (asc)</option>
+                            </select>
+                        </div>
+                        <div class="toolbar-right">
+                            <button class="btn btn-primary" onclick="loadCollection()">🔄 Refrescar</button>
+                        </div>
+                    </div>
+                    <div class="collection-content">
+                        <div class="loading" id="loading">Cargando...</div>
+                        <div class="collection-table-container" id="collectionTableContainer">
+                            <!-- Se llena dinámicamente -->
+                        </div>
+                        <div class="pagination" id="pagination">
+                            <!-- Se llena dinámicamente -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Document Detail Modal -->
+        <div class="modal" id="documentModal">
+            <div class="modal-content modal-large">
+                <div class="modal-header">
+                    <h2>Detalle del Documento</h2>
+                    <button class="close-btn" onclick="closeDocumentModal()">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <pre id="documentContent" class="json-viewer"></pre>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
+
