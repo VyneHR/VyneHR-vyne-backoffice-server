@@ -1,5 +1,10 @@
 // Configuración
-const API_BASE_URL = window.location.origin + '/api';
+// En producción, usar la URL del backend en Render
+// En desarrollo local, usar la URL del servidor actual
+const isProduction = window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1';
+const API_BASE_URL = isProduction 
+    ? 'https://vynehr-vyne-backoffice-server.onrender.com/api'
+    : window.location.origin + '/api';
 let currentCollection = null;
 let currentPage = 1;
 let currentSearch = '';
