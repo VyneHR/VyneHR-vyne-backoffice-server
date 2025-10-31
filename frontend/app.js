@@ -5,6 +5,7 @@ let currentPage = 1;
 let currentSearch = '';
 let currentSort = '_id:desc';
 let currentLimit = 50;
+let authToken = null;
 
 // Estado de la aplicación
 const state = {
@@ -13,11 +14,145 @@ const state = {
     currentData: null
 };
 
+// Función helper para hacer peticiones autenticadas
+async function fetchWithAuth(url, options = {}) {
+    const token = sessionStorage.getItem('backoffice_token');
+    
+    if (!token) {
+        showLoginModal();
+        throw new Error('No autenticado');
+    }
+    
+    const headers = {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`,
+        ...options.headers
+    };
+    
+    const response = await fetch(url, {
+        ...options,
+        headers
+    });
+    
+    // Si la respuesta es 401, mostrar modal de login
+    if (response.status === 401) {
+        sessionStorage.removeItem('backoffice_token');
+        authToken = null;
+        showLoginModal();
+        throw new Error('Sesión expirada. Por favor, inicie sesión nuevamente.');
+    }
+    
+    return response;
+}
+
+// Mostrar modal de login
+function showLoginModal() {
+    const loginModal = document.getElementById('loginModal');
+    const mainContent = document.querySelector('.container');
+    loginModal.classList.add('active');
+    if (mainContent) {
+        mainContent.style.display = 'none';
+    }
+}
+
+// Ocultar modal de login
+function hideLoginModal() {
+    const loginModal = document.getElementById('loginModal');
+    const mainContent = document.querySelector('.container');
+    loginModal.classList.remove('active');
+    if (mainContent) {
+        mainContent.style.display = 'block';
+    }
+}
+
+// Manejar login
+async function handleLogin(event) {
+    event.preventDefault();
+    const passwordInput = document.getElementById('passwordInput');
+    const errorMessage = document.getElementById('loginError');
+    const password = passwordInput.value;
+    
+    errorMessage.textContent = '';
+    errorMessage.style.display = 'none';
+    
+    try {
+        const response = await fetch(`${API_BASE_URL}/auth/login`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ password })
+        });
+        
+        const data = await response.json();
+        
+        if (response.ok && data.success) {
+            // Guardar token en sessionStorage
+            sessionStorage.setItem('backoffice_token', data.token);
+            authToken = data.token;
+            
+            // Ocultar modal de login
+            hideLoginModal();
+            
+            // Cargar datos
+            await checkConnection();
+            await loadStats();
+            await loadCollections();
+        } else {
+            errorMessage.textContent = data.error || 'Contraseña incorrecta';
+            errorMessage.style.display = 'block';
+            passwordInput.value = '';
+            passwordInput.focus();
+        }
+    } catch (error) {
+        errorMessage.textContent = 'Error de conexión. Por favor, intente nuevamente.';
+        errorMessage.style.display = 'block';
+        console.error('Error en login:', error);
+    }
+}
+
+// Verificar autenticación al cargar
+async function checkAuth() {
+    const token = sessionStorage.getItem('backoffice_token');
+    
+    if (!token) {
+        showLoginModal();
+        return false;
+    }
+    
+    try {
+        const response = await fetch(`${API_BASE_URL}/auth/verify`, {
+            headers: {
+                'Authorization': `Bearer ${token}`
+            }
+        });
+        
+        const data = await response.json();
+        
+        if (data.valid) {
+            authToken = token;
+            hideLoginModal();
+            return true;
+        } else {
+            sessionStorage.removeItem('backoffice_token');
+            showLoginModal();
+            return false;
+        }
+    } catch (error) {
+        console.error('Error verificando autenticación:', error);
+        showLoginModal();
+        return false;
+    }
+}
+
 // Inicialización
 document.addEventListener('DOMContentLoaded', async () => {
-    await checkConnection();
-    await loadStats();
-    await loadCollections();
+    const isAuthenticated = await checkAuth();
+    if (isAuthenticated) {
+        await checkConnection();
+        await loadStats();
+        await loadCollections();
+    }
 });
 
 // Verificar conexión
@@ -27,7 +162,7 @@ async function checkConnection() {
     const statusText = statusEl.querySelector('span:last-child');
     
     try {
-        const response = await fetch(`${API_BASE_URL}/stats`);
+        const response = await fetchWithAuth(`${API_BASE_URL}/stats`);
         if (response.ok) {
             statusDot.classList.add('connected');
             statusText.textContent = 'Conectado';
@@ -43,7 +178,7 @@ async function checkConnection() {
 // Cargar estadísticas
 async function loadStats() {
     try {
-        const response = await fetch(`${API_BASE_URL}/stats`);
+        const response = await fetchWithAuth(`${API_BASE_URL}/stats`);
         const data = await response.json();
         state.stats = data;
         renderStats(data);
@@ -107,7 +242,7 @@ function renderStats(stats) {
 // Cargar colecciones
 async function loadCollections() {
     try {
-        const response = await fetch(`${API_BASE_URL}/collections`);
+        const response = await fetchWithAuth(`${API_BASE_URL}/collections`);
         const collections = await response.json();
         state.collections = collections;
         renderCollections(collections);
@@ -202,7 +337,7 @@ async function loadCollection() {
             `page=${currentPage}&limit=${currentLimit}&sortBy=${sortBy}&sortOrder=${sortOrder}` +
             (currentSearch ? `&search=${encodeURIComponent(currentSearch)}` : '');
         
-        const response = await fetch(url);
+        const response = await fetchWithAuth(url);
         const data = await response.json();
         
         state.currentData = data;
@@ -389,7 +524,7 @@ async function performGlobalSearch() {
     if (!query) return;
     
     try {
-        const response = await fetch(`${API_BASE_URL}/search?q=${encodeURIComponent(query)}`);
+        const response = await fetchWithAuth(`${API_BASE_URL}/search?q=${encodeURIComponent(query)}`);
         const data = await response.json();
         
         // Crear modal de resultados
@@ -470,7 +605,7 @@ async function openGridFS() {
     pagination.innerHTML = '';
     
     try {
-        const response = await fetch(`${API_BASE_URL}/gridfs/files`);
+        const response = await fetchWithAuth(`${API_BASE_URL}/gridfs/files`);
         const data = await response.json();
         
         loading.style.display = 'none';

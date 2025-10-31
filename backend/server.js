@@ -14,6 +14,10 @@ dotenv.config({ path: path.resolve(__dirname, '../../VYNEHR/.env') });
 const app = express();
 const PORT = process.env.BACKOFFICE_PORT || 4000;
 
+// Contraseña de acceso al backoffice
+// En producción, configurar BACKOFFICE_PASSWORD como variable de entorno en Render.com
+const BACKOFFICE_PASSWORD = process.env.BACKOFFICE_PASSWORD || '5r2fUIhBPbuC';
+
 // Middleware
 app.use(cors());
 app.use(express.json());
@@ -27,8 +31,77 @@ app.get('/', (req, res) => {
     res.sendFile(path.join(frontendPath, 'index.html'));
 });
 
-// Conexión a MongoDB (misma configuración que el proyecto principal)
-const MONGODB_URI = process.env.MONGODB_URI || "mongodb+srv://vynestart:wIqFcjnAHtnRMb23@vynehrdb.opltfsc.mongodb.net/vynehr?retryWrites=true&w=majority&appName=VYNEHRDB";
+// Rutas de autenticación (deben estar antes del middleware de autenticación)
+app.post('/api/auth/login', async (req, res) => {
+    try {
+        const { password } = req.body;
+        
+        if (!password) {
+            return res.status(400).json({ error: 'Contraseña requerida' });
+        }
+        
+        if (password === BACKOFFICE_PASSWORD) {
+            // Generar token simple (en producción usar JWT)
+            res.json({ 
+                success: true, 
+                token: BACKOFFICE_PASSWORD,
+                message: 'Autenticación exitosa' 
+            });
+        } else {
+            res.status(401).json({ error: 'Contraseña incorrecta' });
+        }
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+app.get('/api/auth/verify', async (req, res) => {
+    try {
+        const token = req.headers['authorization'];
+        
+        if (token && token === `Bearer ${BACKOFFICE_PASSWORD}`) {
+            res.json({ valid: true });
+        } else {
+            res.status(401).json({ valid: false });
+        }
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// Middleware de autenticación para rutas API (excepto login)
+const requireAuth = (req, res, next) => {
+    // Permitir acceso a archivos estáticos y la ruta raíz
+    if (!req.path.startsWith('/api/')) {
+        return next();
+    }
+    
+    // Permitir acceso a rutas de autenticación
+    if (req.path === '/api/auth/login' || req.path === '/api/auth/verify') {
+        return next();
+    }
+    
+    // Verificar token para otras rutas API
+    const token = req.headers['authorization'];
+    if (!token || token !== `Bearer ${BACKOFFICE_PASSWORD}`) {
+        return res.status(401).json({ error: 'No autorizado. Token inválido o faltante.' });
+    }
+    
+    next();
+};
+
+// Aplicar middleware de autenticación
+app.use(requireAuth);
+
+// Conexión a MongoDB
+// IMPORTANTE: En producción, configurar MONGODB_URI como variable de entorno en Render.com
+// Para producción: usar base de datos de producción
+// Para desarrollo: usar base de datos de desarrollo
+const MONGODB_URI = process.env.MONGODB_URI;
+if (!MONGODB_URI) {
+    console.error('❌ ERROR: MONGODB_URI no está configurada. Por favor, configura esta variable de entorno en Render.com');
+    process.exit(1);
+}
 
 mongoose.connect(MONGODB_URI, {
     dbName: 'vynehr',

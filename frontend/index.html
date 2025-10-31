@@ -7,7 +7,7 @@
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-    <div class="container">
+    <div class="container" style="display: none;">
         <!-- Header -->
         <header class="header">
             <h1>🗄️ VYNE HR Database Visualizer</h1>
@@ -94,6 +94,34 @@
                 </div>
                 <div class="modal-body">
                     <pre id="documentContent" class="json-viewer"></pre>
+                </div>
+            </div>
+        </div>
+
+        <!-- Login Modal -->
+        <div class="modal active" id="loginModal">
+            <div class="modal-content login-modal-content">
+                <div class="login-header">
+                    <h1>🔒 Acceso al Backoffice</h1>
+                    <p>Ingrese la contraseña para acceder al visualizador de base de datos</p>
+                </div>
+                <div class="login-body">
+                    <form id="loginForm" onsubmit="handleLogin(event)">
+                        <div class="form-group">
+                            <label for="passwordInput">Contraseña</label>
+                            <input 
+                                type="password" 
+                                id="passwordInput" 
+                                placeholder="Ingrese la contraseña"
+                                required
+                                autofocus
+                            />
+                            <div class="error-message" id="loginError"></div>
+                        </div>
+                        <button type="submit" class="btn btn-primary btn-login">
+                            Iniciar Sesión
+                        </button>
+                    </form>
                 </div>
             </div>
         </div>
