@@ -69,31 +69,106 @@ mongoose.connect(MONGODB_URI, {
 // Función helper para obtener estadísticas de colección
 const getCollectionStats = async (collectionName) => {
     try {
+        // Verificar que la conexión esté lista
+        if (mongoose.connection.readyState !== 1) {
+            console.warn(`⚠️ Conexión MongoDB no lista para colección ${collectionName}`);
+            return { 
+                count: 0, 
+                size: 0, 
+                avgObjSize: 0, 
+                storageSize: 0, 
+                indexes: 0, 
+                totalIndexSize: 0,
+                error: 'Conexión no lista'
+            };
+        }
+
         const db = mongoose.connection.db;
-        const stats = await db.collection(collectionName).stats();
-        const count = await db.collection(collectionName).countDocuments();
+        if (!db) {
+            console.error(`❌ Base de datos no disponible para ${collectionName}`);
+            return { 
+                count: 0, 
+                size: 0, 
+                avgObjSize: 0, 
+                storageSize: 0, 
+                indexes: 0, 
+                totalIndexSize: 0,
+                error: 'Base de datos no disponible'
+            };
+        }
+
+        const collection = db.collection(collectionName);
+        if (!collection) {
+            console.error(`❌ Colección ${collectionName} no encontrada`);
+            return { 
+                count: 0, 
+                size: 0, 
+                avgObjSize: 0, 
+                storageSize: 0, 
+                indexes: 0, 
+                totalIndexSize: 0,
+                error: 'Colección no encontrada'
+            };
+        }
+
+        // Obtener estadísticas
+        const [stats, count] = await Promise.all([
+            collection.stats().catch(err => {
+                console.error(`Error obteniendo stats de ${collectionName}:`, err.message);
+                return { size: 0, avgObjSize: 0, storageSize: 0, nindexes: 0, totalIndexSize: 0 };
+            }),
+            collection.countDocuments({}).catch(err => {
+                console.error(`Error contando documentos de ${collectionName}:`, err.message);
+                return 0;
+            })
+        ]);
+
         return {
-            count,
-            size: stats.size,
-            avgObjSize: stats.avgObjSize,
-            storageSize: stats.storageSize,
-            indexes: stats.nindexes,
-            totalIndexSize: stats.totalIndexSize
+            count: count || 0,
+            size: stats?.size || 0,
+            avgObjSize: stats?.avgObjSize || 0,
+            storageSize: stats?.storageSize || 0,
+            indexes: stats?.nindexes || 0,
+            totalIndexSize: stats?.totalIndexSize || 0
         };
     } catch (error) {
-        return { error: error.message };
+        console.error(`❌ Error en getCollectionStats para ${collectionName}:`, error.message);
+        return { 
+            count: 0, 
+            size: 0, 
+            avgObjSize: 0, 
+            storageSize: 0, 
+            indexes: 0, 
+            totalIndexSize: 0,
+            error: error.message 
+        };
     }
 };
 
 // Ruta principal - información de todas las colecciones
 app.get('/api/collections', async (req, res) => {
     try {
+        // Verificar que la conexión esté lista
+        if (mongoose.connection.readyState !== 1) {
+            console.warn('⚠️ Conexión MongoDB no lista');
+            return res.status(503).json({ error: 'Conexión a MongoDB no está lista. Estado: ' + mongoose.connection.readyState });
+        }
+
         const db = mongoose.connection.db;
+        if (!db) {
+            console.error('❌ Base de datos no disponible');
+            return res.status(503).json({ error: 'Base de datos no disponible' });
+        }
+
+        console.log('📊 Obteniendo lista de colecciones...');
         const collections = await db.listCollections().toArray();
+        console.log(`✅ Encontradas ${collections.length} colecciones:`, collections.map(c => c.name));
         
         const collectionsInfo = await Promise.all(
             collections.map(async (col) => {
+                console.log(`📈 Obteniendo estadísticas de ${col.name}...`);
                 const stats = await getCollectionStats(col.name);
+                console.log(`✅ Estadísticas de ${col.name}:`, stats);
                 return {
                     name: col.name,
                     ...stats
@@ -101,8 +176,10 @@ app.get('/api/collections', async (req, res) => {
             })
         );
         
+        console.log('✅ Total de colecciones procesadas:', collectionsInfo.length);
         res.json(collectionsInfo);
     } catch (error) {
+        console.error('❌ Error en /api/collections:', error);
         res.status(500).json({ error: error.message });
     }
 });
@@ -242,12 +319,27 @@ app.get('/api/search', async (req, res) => {
 // Ruta para obtener estadísticas de la base de datos
 app.get('/api/stats', async (req, res) => {
     try {
+        // Verificar que la conexión esté lista
+        if (mongoose.connection.readyState !== 1) {
+            console.warn('⚠️ Conexión MongoDB no lista en /api/stats');
+            return res.status(503).json({ error: 'Conexión a MongoDB no está lista. Estado: ' + mongoose.connection.readyState });
+        }
+
         const db = mongoose.connection.db;
+        if (!db) {
+            console.error('❌ Base de datos no disponible en /api/stats');
+            return res.status(503).json({ error: 'Base de datos no disponible' });
+        }
+
+        console.log('📊 Obteniendo estadísticas de la base de datos...');
         const collections = await db.listCollections().toArray();
+        console.log(`✅ Encontradas ${collections.length} colecciones para estadísticas`);
         
         const stats = await Promise.all(
             collections.map(async (col) => {
+                console.log(`📈 Obteniendo estadísticas de ${col.name}...`);
                 const collectionStats = await getCollectionStats(col.name);
+                console.log(`✅ Estadísticas de ${col.name}: count=${collectionStats.count}`);
                 return {
                     name: col.name,
                     ...collectionStats
@@ -255,19 +347,32 @@ app.get('/api/stats', async (req, res) => {
             })
         );
         
-        const dbStats = await db.stats();
+        console.log('📊 Obteniendo estadísticas generales de la BD...');
+        const dbStats = await db.stats().catch(err => {
+            console.error('Error obteniendo dbStats:', err.message);
+            return { dataSize: 0, storageSize: 0, indexSize: 0 };
+        });
         
-        res.json({
+        const result = {
             database: {
                 name: db.databaseName,
                 collections: collections.length,
-                dataSize: dbStats.dataSize,
-                storageSize: dbStats.storageSize,
-                indexSize: dbStats.indexSize
+                dataSize: dbStats?.dataSize || 0,
+                storageSize: dbStats?.storageSize || 0,
+                indexSize: dbStats?.indexSize || 0
             },
             collections: stats
+        };
+        
+        console.log('✅ Estadísticas totales:', {
+            dbName: result.database.name,
+            collectionsCount: result.database.collections,
+            totalCount: stats.reduce((sum, s) => sum + (s.count || 0), 0)
         });
+        
+        res.json(result);
     } catch (error) {
+        console.error('❌ Error en /api/stats:', error);
         res.status(500).json({ error: error.message });
     }
 });
