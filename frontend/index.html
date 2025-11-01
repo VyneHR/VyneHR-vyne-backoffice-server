@@ -6,7 +6,17 @@
     <title>VYNE HR - Database Visualizer</title>
     <link rel="stylesheet" href="styles.css">
 </head>
-<body>
+<body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif; background: #f8fafc; color: #1e293b; min-height: 100vh;">
+    <!-- Mensaje de carga mientras JavaScript carga -->
+    <noscript>
+        <div style="display: flex; align-items: center; justify-content: center; min-height: 100vh; padding: 2rem;">
+            <div style="text-align: center; background: white; padding: 2rem; border-radius: 12px; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);">
+                <h1 style="color: #2563eb; margin-bottom: 1rem;">JavaScript Requerido</h1>
+                <p style="color: #64748b;">Por favor, habilita JavaScript en tu navegador para usar esta aplicación.</p>
+            </div>
+        </div>
+    </noscript>
+    
     <div class="container" style="display: none;">
         <!-- Header -->
         <header class="header">
@@ -100,26 +110,27 @@
     </div>
 
     <!-- Login Modal - Fuera del contenedor para que siempre sea visible -->
-    <div class="modal active" id="loginModal">
-        <div class="modal-content login-modal-content">
-            <div class="login-header">
-                <h1>🔒 Acceso al Backoffice</h1>
-                <p>Ingrese la contraseña para acceder al visualizador de base de datos</p>
+    <div class="modal active" id="loginModal" style="display: flex !important; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.5); z-index: 1000; align-items: center; justify-content: center; padding: 2rem;">
+        <div class="modal-content login-modal-content" style="background: white; border-radius: 12px; width: 90%; max-width: 450px; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);">
+            <div class="login-header" style="text-align: center; padding: 2rem 2rem 1rem; border-bottom: 2px solid #e2e8f0;">
+                <h1 style="font-size: 1.75rem; color: #2563eb; margin-bottom: 0.5rem;">🔒 Acceso al Backoffice</h1>
+                <p style="color: #64748b; font-size: 0.875rem;">Ingrese la contraseña para acceder al visualizador de base de datos</p>
             </div>
-            <div class="login-body">
+            <div class="login-body" style="padding: 2rem;">
                 <form id="loginForm" onsubmit="handleLogin(event)">
-                    <div class="form-group">
-                        <label for="passwordInput">Contraseña</label>
+                    <div class="form-group" style="margin-bottom: 1.5rem;">
+                        <label for="passwordInput" style="display: block; margin-bottom: 0.5rem; color: #1e293b; font-weight: 500;">Contraseña</label>
                         <input 
                             type="password" 
                             id="passwordInput" 
                             placeholder="Ingrese la contraseña"
                             required
                             autofocus
+                            style="width: 100%; padding: 0.75rem 1rem; border: 2px solid #e2e8f0; border-radius: 8px; font-size: 1rem;"
                         />
-                        <div class="error-message" id="loginError"></div>
+                        <div class="error-message" id="loginError" style="color: #ef4444; font-size: 0.875rem; margin-top: 0.5rem; display: none;"></div>
                     </div>
-                    <button type="submit" class="btn btn-primary btn-login">
+                    <button type="submit" class="btn btn-primary btn-login" style="width: 100%; padding: 0.875rem; font-size: 1rem; font-weight: 600; background: #2563eb; color: white; border: none; border-radius: 8px; cursor: pointer;">
                         Iniciar Sesión
                     </button>
                 </form>
